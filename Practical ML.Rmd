@@ -1,0 +1,91 @@
+---
+title: "Practical Machine Learning Project"
+author: "Francesco Maria Federici"
+date: "22nd April 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Data and reproduceability
+
+In order to make the work reproducible a seed has been randomly fixed to 2718.
+The outcome variable that we're going to predict is "classe", a factor variable with 5 levels. 
+Six participants performed one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions, the 5 levels of the variable classe: doing it exactly according to the specification (A), throwing the elbows to the front (B), lifting the dumbbell only halfway (C), lowering the dumbbell only halfway (D) and throwing the hips to the front (E).
+Before performing any training of algorithms on the given dataset, this has been cleaned from useless and irrelevant variables by clearing the dataset from variables with all missing values and irrelevant variables.
+All the other variables were used to train the algorithm
+
+## Cross validation
+With the aim to train ans test the algorithm using the given data, the training set has been subsampled in a subtraining (P=0.6) and subtesting set (p=0.4).
+Thus, the algorithm were trained on the subtraining dataset and tested on the subtesting dataset
+
+## Model fitting testing and choosing
+Two different algorithm were trained tested and compared in order to choose the best fitting one in term of accuracy.
+The accuracy is calculated as the percentage of the correct classification using the trained algorithm on the training set and testing it on the testing set.
+Thw two "tested" algorithms were two classifiers as the decision tree and the random forest. The second one was choosen for the final classification model.
+
+## Code deployment
+
+Loading packages
+```{r}
+library(caret)
+library(randomForest)
+library(rpart)
+```
+
+
+Setting seed for the reproduceability
+```{r}
+set.seed(2718)
+```
+
+
+Loading data (training and test set) and transforming "NA" and "#DIV/0" strings into "NA".
+```{r}
+training<-read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", na.strings=c("NA","#DIV/0",""))
+test<-read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", na.strings=c("NA","#DIV/0",""))
+```
+
+
+Further cleaning data by keeping out columns with all zero values and the first 7 columns deemed irrelevant for the analysis
+```{r}
+trainingclear<-training[,colSums(is.na(training)) == 0]
+testclear<-test[,colSums(is.na(test))==0]
+trainingset<-trainingclear[,-c(1:7)]
+testingset<-testclear[,c(1:7)]
+```
+
+
+Creating data partition for training and cross validation
+```{r}
+inTrain<-createDataPartition(y=trainingset$classe, p=0.6, list=FALSE)
+subtraining<-trainingset[inTrain,]
+subtesting<-trainingset[-inTrain,]
+```
+
+Creating 1st model (decision tree), predicting the test set with it and testing accuracy by comparing the prediction with the test set
+```{r}
+modeldt<-rpart(classe~.,data=subtraining,method="class")
+predictiondt<-predict(modeldt,subtesting,type="class")
+confusionMatrix(predictiondt,subtesting$classe)
+```
+The Model show a not so good accuracy in predicting the variable classe especially the "B" one.
+
+
+Creating 2nd model (Random Forest), predicting the test set with it and testing accuracy by comparing the prediction with the test set
+```{r}
+modelrf<-randomForest(classe~.,data=subtraining,method="class")
+predictionrf<-predict(modelrf,subtesting,type="class")
+confusionMatrix(predictionrf,subtesting$classe)
+```
+
+The higher accuracy of the Random Forest algorithm make us choose this one betwen the two algorithm tested.
+
+We thus apply it to the evaluation test (originally loaded as "test")
+
+```{r}
+predictiontest<-predict(modelrf,test,type="class")
+predictiontest
+```
